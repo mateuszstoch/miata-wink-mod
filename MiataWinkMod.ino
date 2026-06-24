@@ -24,11 +24,10 @@
 // USTAWIENIA SPRZĘTOWE
 // ==========================================
 
-// Piny sterowania przekaźnikami
-#define RELAY_LEFT_PIN    18 // Przekaźnik 1: Odcięcie zasilania lewego silniczka (NC - Normally Closed)
-#define RELAY_RIGHT_PIN   19 // Przekaźnik 2: Odcięcie zasilania prawego silniczka (NC - Normally Closed)
-#define RELAY_SPARE_PIN   21 // Przekaźnik 3: Rezerwowy
-#define RELAY_TRIGGER_PIN 22 // Przekaźnik 4: Wirtualny przycisk podnoszenia (NO - Normally Open)
+#define RELAY_LEFT_PIN    4  // Przekaźnik 1: Odcięcie zasilania lewego silniczka (NC - Normally Closed)
+#define RELAY_RIGHT_PIN   5  // Przekaźnik 2: Odcięcie zasilania prawego silniczka (NC - Normally Closed)
+#define RELAY_SPARE_PIN   6  // Przekaźnik 3: Rezerwowy
+#define RELAY_TRIGGER_PIN 7  // Przekaźnik 4: Wirtualny przycisk podnoszenia (NO - Normally Open)
 
 // Ustawienie logiki przekaźnika (Active Low dla większości chińskich modułów Arduino)
 #define RELAY_ACTIVE_LOW true

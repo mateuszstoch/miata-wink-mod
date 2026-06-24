@@ -30,10 +30,10 @@ Połącz piny GPIO mikrokontrolera ESP32 z wejściami sterującymi modułu przek
 | :--- | :--- | :--- | :--- |
 | **GND** | **GND** | Wspólna masa | — |
 | **VIN / 5V** | **VCC** | Zasilanie cewki | — |
-| **GPIO 18** | **IN1** | Odcięcie Lewego Oka | Wpięty w zasilanie lewego silniczka (COM / NC) |
-| **GPIO 19** | **IN2** | Odcięcie Prawego Oka | Wpięty w zasilanie prawego silniczka (COM / NC) |
-| **GPIO 21** | **IN3** | Kanał Rezerwowy | — |
-| **GPIO 22** | **IN4** | Wyzwalacz Popupów | Wpięty w przycisk deski rozdzielczej (COM / NO) |
+| **GPIO 4** | **IN1** | Odcięcie Lewego Oka | Wpięty w zasilanie lewego silniczka (COM / NC) |
+| **GPIO 5** | **IN2** | Odcięcie Prawego Oka | Wpięty w zasilanie prawego silniczka (COM / NC) |
+| **GPIO 6** | **IN3** | Kanał Rezerwowy | — |
+| **GPIO 7** | **IN4** | Wyzwalacz Popupów | Wpięty w przycisk deski rozdzielczej (COM / NO) |
 
 *Uwaga dot. zasilania przekaźników:* Jeśli Twój moduł przekaźników posiada zworkę **VCC-JDVCC**, najlepiej ją zdjąć, podłączyć **JD-VCC do 5V** (z przetwornicy), a pin **VCC do 3.3V z ESP32**. Zapobiega to cofaniu się napięcia 5V z przekaźników na piny logiczne ESP32, co chroni mikrokontroler przed uszkodzeniem.
 
