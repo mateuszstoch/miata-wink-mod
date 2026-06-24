@@ -172,7 +172,7 @@ class MyServerCallbacks: public BLEServerCallbacks {
 
 class MyCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
-      std::string rxValue = pCharacteristic->getValue();
+      std::string rxValue = pCharacteristic->getValue().c_str();
 
       if (rxValue.length() > 0) {
         Serial.print("Otrzymano komendę: ");
