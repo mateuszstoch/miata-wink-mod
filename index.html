@@ -59,6 +59,11 @@
       text-align: center;
     }
 
+    header {
+      position: relative;
+      margin-bottom: 24px;
+    }
+
     header h1 {
       font-size: 1.8rem;
       font-weight: 800;
@@ -67,12 +72,37 @@
       margin-bottom: 8px;
       color: var(--frosted-mint);
       text-shadow: var(--glow-glow);
+      padding-right: 40px;
+      padding-left: 40px;
     }
 
     header p {
       font-size: 0.9rem;
       color: var(--text-muted);
-      margin-bottom: 24px;
+    }
+
+    /* Settings Gear Button */
+    .settings-btn {
+      position: absolute;
+      right: 0;
+      top: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px;
+      outline: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .settings-btn svg {
+      fill: var(--text-muted);
+      transition: fill 0.2s, transform 0.3s ease;
+    }
+    .settings-btn:hover svg, .settings-btn:active svg {
+      fill: var(--frosted-mint);
+      filter: drop-shadow(var(--glow-glow));
+      transform: rotate(45deg);
     }
 
     /* Connection status card */
@@ -109,7 +139,7 @@
 
     .status-text {
       font-weight: 600;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       color: var(--text-main);
     }
 
@@ -194,10 +224,13 @@
     }
 
     .btn-action:disabled {
-      opacity: 0.4;
+      opacity: 0.3;
       cursor: not-allowed;
       transform: none;
       animation: none;
+      background: rgba(255, 255, 255, 0.02);
+      border-color: rgba(255, 255, 255, 0.05);
+      color: rgba(255, 255, 255, 0.2);
     }
 
     /* Sleepy Eyes slider section */
@@ -261,6 +294,12 @@
       transform: scale(1.2);
     }
 
+    input[type="range"]:disabled::-webkit-slider-thumb {
+      background: var(--text-muted);
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
     .btn-sleepy {
       background: var(--faded-copper);
       color: var(--midnight-violet);
@@ -275,8 +314,10 @@
     }
 
     .btn-sleepy:disabled {
-      opacity: 0.4;
+      opacity: 0.3;
       cursor: not-allowed;
+      background: rgba(255, 255, 255, 0.05);
+      color: rgba(255, 255, 255, 0.2);
     }
 
     /* Reset button */
@@ -297,9 +338,12 @@
     }
 
     .btn-reset:disabled {
-      opacity: 0.4;
+      opacity: 0.3;
       cursor: not-allowed;
       box-shadow: none;
+      background: rgba(255, 255, 255, 0.05);
+      color: rgba(255, 255, 255, 0.2);
+      border-color: transparent;
     }
 
     /* Diagnostic console */
@@ -337,6 +381,159 @@
       color: #ffcdd2;
     }
 
+    /* ==========================================
+       MODAL PANEL SETTINGS
+       ========================================== */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      z-index: 1000;
+      padding: 20px;
+    }
+    
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-container {
+      width: 100%;
+      max-width: 400px;
+      background: rgba(30, 26, 29, 0.9);
+      border: 1px solid rgba(229, 242, 201, 0.2);
+      border-radius: 24px;
+      padding: 28px 24px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      text-align: left;
+      transform: translateY(20px);
+      transition: transform 0.3s ease;
+    }
+    
+    .modal-overlay.open .modal-container {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 12px;
+    }
+
+    .modal-header h2 {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--frosted-mint);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .modal-close-x {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.6rem;
+      cursor: pointer;
+      outline: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+    }
+    .modal-close-x:hover {
+      color: var(--text-main);
+    }
+
+    .setting-group {
+      margin-bottom: 22px;
+    }
+
+    .setting-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .input-field {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: var(--text-main);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    
+    .input-field:focus {
+      border-color: var(--frosted-mint);
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .checkbox-container input {
+      cursor: pointer;
+      width: 16px;
+      height: 16px;
+      accent-color: var(--frosted-mint);
+    }
+
+    .setting-help {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .btn-save-setting {
+      background: var(--faded-copper);
+      color: var(--midnight-violet);
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      width: 100%;
+      margin-top: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-save-setting:active {
+      transform: scale(0.98);
+    }
+
+    .btn-save-setting:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
     footer {
       margin-top: 20px;
       font-size: 0.75rem;
@@ -351,6 +548,13 @@
     <header>
       <h1>Miata Wink Mod</h1>
       <p>Bluetooth Control Panel</p>
+      
+      <!-- Settings Gear Button -->
+      <button id="settingsBtn" class="settings-btn" title="Configuration">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+          <path d="M12 15.5A3.5 3.5 0 1 1 15.5 12A3.5 3.5 0 0 1 12 15.5m9.03-2.54a10.09 10.09 0 0 0-.17-1.92l2.36-1.84a.57.57 0 0 0 .13-.72l-2.24-3.88a.56.56 0 0 0-.69-.25l-2.78 1.12a8.31 8.31 0 0 0-1.66-1l-.42-2.95a.57.57 0 0 0-.56-.49h-4.48a.57.57 0 0 0-.56.49L9.75 4.5a8.31 8.31 0 0 0-1.66 1L5.31 4.38a.56.56 0 0 0-.69.25L2.38 8.51a.57.57 0 0 0 .13.72l2.36 1.84a10.09 10.09 0 0 0-.17 1.92l-2.36 1.84a.57.57 0 0 0-.13.72l2.24 3.88a.56.56 0 0 0 .69.25l2.78-1.12a8.31 8.31 0 0 0 1.66 1l.42 2.95a.57.57 0 0 0 .56.49h4.48a.57.57 0 0 0 .56-.49l.42-2.95a8.31 8.31 0 0 0 1.66-1l2.78 1.12a.56.56 0 0 0 .69-.25l2.24-3.88a.57.57 0 0 0-.13-.72l-2.36-1.84z"/>
+        </svg>
+      </button>
     </header>
 
     <div class="status-card">
@@ -377,16 +581,16 @@
       </button>
     </div>
 
-    <!-- Sleepy Eyes slider -->
+    <!-- Sleepy Eyes slider (Temporary/Testing) -->
     <div class="slider-section">
       <div class="slider-header">
-        <span class="slider-title">Sleepy Eyes Height</span>
+        <span class="slider-title">Testing Sleepy Eyes</span>
         <span id="sliderValue" class="slider-value">220ms</span>
       </div>
       <div class="slider-wrapper">
         <input type="range" id="sleepySlider" min="100" max="400" value="220" disabled>
       </div>
-      <button id="sleepyBtn" class="btn btn-sleepy" disabled>Set Sleepy Eyes</button>
+      <button id="sleepyBtn" class="btn btn-sleepy" disabled>Trigger Sleepy Eyes</button>
     </div>
 
     <button id="resetBtn" class="btn btn-reset" disabled>Close Headlights / Reset</button>
@@ -394,6 +598,45 @@
     <!-- Logs Console -->
     <div id="console" class="console">
       <div class="console-line info">Control panel started. Click "Connect" to scan for BLE module.</div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL SETTINGS VIEW
+       ========================================== -->
+  <div id="settingsModal" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2>Configuration</h2>
+        <button id="modalCloseBtn" class="modal-close-x">&times;</button>
+      </div>
+      
+      <!-- Security / PIN Code Setting -->
+      <div class="setting-group">
+        <label for="pinInput">BLE Authorization PIN</label>
+        <input type="password" id="pinInput" class="input-field" placeholder="Enter 4-digit PIN" maxlength="10" value="1234">
+        <label class="checkbox-container">
+          <input type="checkbox" id="rememberPin" checked>
+          <span>Remember PIN on this device</span>
+        </label>
+        <p class="setting-help">Must match AUTH_PIN defined in MiataWinkMod.ino</p>
+      </div>
+      
+      <!-- NVS Step Duration Setting (Saved in NVS) -->
+      <div class="setting-group">
+        <label for="stepNVSInput">Wink Speed / Step Duration (ms)</label>
+        <input type="number" id="stepNVSInput" class="input-field" min="400" max="1500" placeholder="e.g. 800" value="800">
+        <p class="setting-help">Range: 400 - 1500 ms (Default: 800 ms)</p>
+        <button id="saveStepBtn" class="btn btn-save-setting" disabled>Save to NVS</button>
+      </div>
+      
+      <!-- NVS Sleepy Height Setting (Saved in NVS) -->
+      <div class="setting-group">
+        <label for="sleepyNVSInput">Default Sleepy Eyes Height (ms)</label>
+        <input type="number" id="sleepyNVSInput" class="input-field" min="50" max="600" placeholder="e.g. 220" value="220">
+        <p class="setting-help">Range: 50 - 600 ms (Default: 220 ms)</p>
+        <button id="saveSleepyBtn" class="btn btn-save-setting" disabled>Save to NVS</button>
+      </div>
     </div>
   </div>
 
@@ -408,6 +651,9 @@
     let bleDevice = null;
     let rxCharacteristic = null;
     let txCharacteristic = null;
+    
+    // Status variable for application-level authentication
+    let isAuthenticated = false;
 
     // DOM Elements
     const connectBtn = document.getElementById('connectBtn');
@@ -425,9 +671,55 @@
     const sleepyBtn = document.getElementById('sleepyBtn');
     const resetBtn = document.getElementById('resetBtn');
 
+    // Settings Modal DOM Elements
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsModal = document.getElementById('settingsModal');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+    
+    const pinInput = document.getElementById('pinInput');
+    const rememberPin = document.getElementById('rememberPin');
+    const stepNVSInput = document.getElementById('stepNVSInput');
+    const sleepyNVSInput = document.getElementById('sleepyNVSInput');
+    
+    const saveStepBtn = document.getElementById('saveStepBtn');
+    const saveSleepyBtn = document.getElementById('saveSleepyBtn');
+
+    // Load saved PIN from localStorage on startup
+    window.addEventListener('load', () => {
+      const savedPin = localStorage.getItem('miata_pin');
+      if (savedPin) {
+        pinInput.value = savedPin;
+        rememberPin.checked = true;
+      } else {
+        rememberPin.checked = false;
+      }
+    });
+
     // Slider listener
     sleepySlider.addEventListener('input', (e) => {
       sliderValue.textContent = e.target.value + 'ms';
+    });
+
+    // Modal open/close actions
+    settingsBtn.addEventListener('click', () => {
+      settingsModal.classList.add('open');
+    });
+
+    modalCloseBtn.addEventListener('click', () => {
+      settingsModal.classList.remove('open');
+      // Save PIN in localStorage if checkbox is checked
+      if (rememberPin.checked) {
+        localStorage.setItem('miata_pin', pinInput.value);
+      } else {
+        localStorage.removeItem('miata_pin');
+      }
+    });
+
+    // Close modal if clicking outside container
+    settingsModal.addEventListener('click', (e) => {
+      if (e.target === settingsModal) {
+        modalCloseBtn.click();
+      }
     });
 
     // Logging helper
@@ -447,15 +739,20 @@
       winkABtn.classList.remove('active');
     }
 
-    // Set buttons active/inactive state
+    // Set buttons active/inactive state (differentiating between connected, and authenticated)
     function setInterfaceEnabled(enabled) {
-      const buttons = [winkLBtn, winkRBtn, winkBBtn, winkABtn, sleepyBtn, resetBtn, sleepySlider];
-      buttons.forEach(btn => {
+      const mainControlButtons = [winkLBtn, winkRBtn, winkBBtn, winkABtn, sleepyBtn, resetBtn, sleepySlider];
+      mainControlButtons.forEach(btn => {
         btn.disabled = !enabled;
         if (!enabled) {
           btn.classList.remove('active');
         }
       });
+      
+      // Settings buttons are only active when connected
+      const isDeviceConnected = bleDevice && bleDevice.gatt.connected;
+      saveStepBtn.disabled = !isDeviceConnected;
+      saveSleepyBtn.disabled = !isDeviceConnected;
     }
 
     // Connect to BLE GATT server
@@ -490,13 +787,23 @@
         await txCharacteristic.startNotifications();
         txCharacteristic.addEventListener('characteristicvaluechanged', onTxNotificationReceived);
 
-        // Success
-        statusDot.classList.add('connected');
-        statusText.textContent = 'Connected';
+        // Connection successful, now authenticate
+        statusDot.classList.remove('connected'); // Don't show green until authenticated
+        statusText.textContent = 'Authenticating...';
         connectBtn.textContent = 'Disconnect';
         connectBtn.classList.add('connected');
-        setInterfaceEnabled(true);
-        log('Successfully connected to Miata Wink Mod BLE!', 'success');
+        
+        // Settings buttons active now that we are connected, but main buttons remain locked
+        saveStepBtn.disabled = false;
+        saveSleepyBtn.disabled = false;
+        
+        log('BLE connection established. Sending PIN...', 'info');
+        
+        // Wait slightly and send authentication PIN
+        setTimeout(async () => {
+          const pin = pinInput.value;
+          await sendCommand(`auth_${pin}`);
+        }, 500);
 
       } catch (error) {
         log(`Connection error: ${error.message}`, 'error');
@@ -510,7 +817,10 @@
       statusText.textContent = 'Disconnected';
       connectBtn.textContent = 'Connect';
       connectBtn.classList.remove('connected');
+      
+      isAuthenticated = false;
       setInterfaceEnabled(false);
+      
       rxCharacteristic = null;
       txCharacteristic = null;
       log('Device disconnected.', 'error');
@@ -523,13 +833,47 @@
       const text = decoder.decode(value);
       log(`Received: ${text}`, 'success');
 
-      if (text === "ACK: Wave Loop ON") {
+      if (text === "ACK: Unlocked") {
+        isAuthenticated = true;
+        statusDot.classList.add('connected');
+        statusText.textContent = 'Connected (Unlocked)';
+        setInterfaceEnabled(true);
+        log('Access granted! Controller unlocked.', 'success');
+        
+        // Auto-close modal if it was open on successful login
+        setTimeout(() => {
+          if (settingsModal.classList.contains('open')) {
+            modalCloseBtn.click();
+          }
+        }, 800);
+      } 
+      else if (text === "ERR: Auth failed") {
+        isAuthenticated = false;
+        statusDot.classList.remove('connected');
+        statusText.textContent = 'Connected (Locked)';
+        setInterfaceEnabled(false);
+        log('Authentication failed! Wrong PIN code.', 'error');
+        
+        // Force settings modal open so user can input correct PIN
+        settingsModal.classList.add('open');
+      } 
+      else if (text === "ERR: Locked") {
+        isAuthenticated = false;
+        statusDot.classList.remove('connected');
+        statusText.textContent = 'Connected (Locked)';
+        setInterfaceEnabled(false);
+        log('Device is locked. Authenticate first.', 'error');
+        settingsModal.classList.add('open');
+      } 
+      else if (text === "ACK: Wave Loop ON") {
         winkABtn.classList.add('active');
-        log("Wave loop started in background.", "info");
-      } else if (text === "ACK: Wave Loop OFF") {
+        log("Wave loop active.", "info");
+      } 
+      else if (text === "ACK: Wave Loop OFF") {
         winkABtn.classList.remove('active');
         log("Wave loop stopped.", "info");
-      } else if (text.startsWith("ACK:") && text !== "ACK: Wave Loop ON") {
+      } 
+      else if (text.startsWith("ACK:") && text !== "ACK: Wave Loop ON") {
         // Any other valid command clears toggle states
         clearActiveStates();
       }
@@ -542,13 +886,19 @@
         return;
       }
 
-      // If sending a non-wave command, immediately clear visual active state in UI
-      if (command !== 'wink_a') {
+      // If sending a non-wave command and authenticated, clear active wave button visually
+      if (command !== 'wink_a' && !command.startsWith('auth_')) {
         clearActiveStates();
       }
 
       try {
-        log(`Sending: ${command}...`);
+        // Don't show full PIN in log for security
+        if (command.startsWith('auth_')) {
+          log('Sending: auth_****');
+        } else {
+          log(`Sending: ${command}...`);
+        }
+        
         const encoder = new TextEncoder();
         const data = encoder.encode(command);
         await rxCharacteristic.writeValue(data);
@@ -571,6 +921,25 @@
     });
     
     resetBtn.addEventListener('click', () => sendCommand('reset'));
+
+    // Settings Modal Save buttons
+    saveStepBtn.addEventListener('click', () => {
+      const val = stepNVSInput.value;
+      if (val >= 400 && val <= 1500) {
+        sendCommand(`set_step_${val}`);
+      } else {
+        log('Error: Wink Speed must be between 400 and 1500 ms', 'error');
+      }
+    });
+
+    saveSleepyBtn.addEventListener('click', () => {
+      const val = sleepyNVSInput.value;
+      if (val >= 50 && val <= 600) {
+        sendCommand(`set_sleepy_${val}`);
+      } else {
+        log('Error: Sleepy Height must be between 50 and 600 ms', 'error');
+      }
+    });
 
   </script>
 </body>

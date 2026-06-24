@@ -5,25 +5,29 @@
  * Umożliwia mruganie lewym/prawym okiem, mruganie naprzemienne (nieblokująca pętla fali), 
  * ustawianie "sleepy eyes" z regulacją wysokości oraz resetowanie świateł do stanu fabrycznego.
  * 
- * Komunikacja odbywa się za pośrednictwem Bluetooth Low Energy (BLE) przy użyciu profilu
- * Nordic UART Service (NUS) - standardu kompatybilnego z aplikacjami terminalowymi BLE
- * oraz stronami Web Bluetooth API.
+ * ZABEZPIECZENIE (PIN AUTHENTICATION):
+ * Moduł domyślnie uruchamia się zablokowany. Aby nim sterować, należy najpierw
+ * przesłać przez BLE komendę "auth_XXXX" z poprawnym kodem PIN zdefiniowanym poniżej.
  * 
- * BEZPIECZEŃSTWO (FAIL-SAFE):
- * Przekaźniki odcięcia zasilania silniczków reflektorów są podłączone jako Normalnie Zamknięte (NC).
- * Oznacza to, że jeśli ESP32 straci zasilanie lub zostanie wyłączone, światła będą działały
- * w 100% fabrycznie za pomocą oryginalnych przełączników w aucie.
+ * PAMIĘĆ TRWAŁA (NVS):
+ * Zmiany konfiguracji (czas trwania kroku, wysokość sleepy eyes) są zapisywane w pamięci
+ * flash za pomocą biblioteki Preferences, dzięki czemu urządzenie pamięta je po odłączeniu zasilania.
  */
 
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <Preferences.h>
 
 // ==========================================
-// USTAWIENIA SPRZĘTOWE
+// KONFIGURACJA BEZPIECZEŃSTWA
 // ==========================================
+#define AUTH_PIN "1234" // Zmień ten PIN na własny przed wgraniem programu!
 
+// ==========================================
+// USTAWIENIA SPRZĘTOWE (ESP32-C3)
+// ==========================================
 #define RELAY_LEFT_PIN    4  // Przekaźnik 1: Odcięcie zasilania lewego silniczka (NC - Normally Closed)
 #define RELAY_RIGHT_PIN   5  // Przekaźnik 2: Odcięcie zasilania prawego silniczka (NC - Normally Closed)
 #define RELAY_SPARE_PIN   6  // Przekaźnik 3: Rezerwowy
@@ -44,12 +48,18 @@ BLECharacteristic *pTxCharacteristic = NULL;
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 
-// Domyślne opóźnienie dla "Sleepy Eyes" (w milisekundach)
-int sleepyDelayMs = 220; 
+// Stan autoryzacji urządzenia (blokowany przy starcie i rozłączeniu)
+volatile bool isAuthenticated = false;
+
+// Zmienna trwałego zapisu
+Preferences preferences;
 
 // ==========================================
-// ZMIENNE DLA NIEBLOKUJĄCEJ PĘTLI FALI (TOGGLE WAVE)
+// ZMIENNE KONTROLNE (ŁADOWANE Z NVS)
 // ==========================================
+volatile int sleepyDelayMs = 220;         // Czas odcięcia dla Sleepy Eyes (ms)
+volatile unsigned long stepDuration = 800; // Czas jednego kroku w ms (fala/wink)
+
 enum ModMode {
   MODE_NORMAL,
   MODE_WAVE_LOOP
@@ -58,7 +68,6 @@ enum ModMode {
 volatile ModMode currentMode = MODE_NORMAL;
 volatile int waveStep = 0;
 volatile unsigned long lastStepTime = 0;
-const unsigned long STEP_DURATION = 800; // Czas jednego kroku w ms (800ms)
 
 // ==========================================
 // FUNKCJE POMOCNICZE PRZEKAŹNIKÓW
@@ -66,8 +75,6 @@ const unsigned long STEP_DURATION = 800; // Czas jednego kroku w ms (800ms)
 
 /**
  * Steruje stanem przekaźnika z uwzględnieniem logiki Active Low/High.
- * @param pin Pin GPIO mikrokontrolera
- * @param active true = włącz cewkę przekaźnika (zmień stan styków), false = wyłącz cewkę (stan domyślny)
  */
 void setRelay(int pin, bool active) {
   if (RELAY_ACTIVE_LOW) {
@@ -99,10 +106,10 @@ void winkLeft() {
   delay(50);
   
   setRelay(RELAY_TRIGGER_PIN, true);  // Wciśnij wirtualny przycisk podnoszenia
-  delay(800);                         // Czekaj, aż prawe oko podniesie się całkowicie
+  delay(stepDuration);                // Używamy skonfigurowanego czasu kroku
   
   setRelay(RELAY_TRIGGER_PIN, false); // Puść przycisk (prawe oko zaczyna opadać)
-  delay(800);                         // Czekaj, aż prawe oko opadnie całkowicie
+  delay(stepDuration);
   
   resetSystem();                      // Przywróć zasilanie lewemu oku
 }
@@ -116,10 +123,10 @@ void winkRight() {
   delay(50);
   
   setRelay(RELAY_TRIGGER_PIN, true);  // Wciśnij przycisk
-  delay(800);                         // Czekaj na pełne podniesienie lewego oka
+  delay(stepDuration);
   
   setRelay(RELAY_TRIGGER_PIN, false); // Puść przycisk (lewe oko zaczyna opadać)
-  delay(800);                         // Czekaj na opadnięcie lewego oka
+  delay(stepDuration);
   
   resetSystem();                      // Przywróć zasilanie prawemu oku
 }
@@ -130,10 +137,10 @@ void winkBoth() {
   delay(50);
   
   setRelay(RELAY_TRIGGER_PIN, true);  // Wciśnij przycisk
-  delay(800);                         // Światła w górę
+  delay(stepDuration);
   
   setRelay(RELAY_TRIGGER_PIN, false); // Puść przycisk
-  delay(800);                         // Światła w dół
+  delay(stepDuration);
   
   resetSystem();
 }
@@ -144,7 +151,7 @@ void sleepyEyes(int delayMs) {
   delay(50);
   
   setRelay(RELAY_TRIGGER_PIN, true);  // Wciśnij przycisk (światła ruszają w górę)
-  delay(delayMs);                     // Czekaj określony czas (np. 200 ms)
+  delay(delayMs);                     // Czekaj określony czas
   
   setRelay(RELAY_LEFT_PIN, true);     // Odetnij lewy silnik
   setRelay(RELAY_RIGHT_PIN, true);    // Odetnij prawy silnik (światła zamarzają w pozycji półotwartej)
@@ -160,12 +167,14 @@ void sleepyEyes(int delayMs) {
 class MyServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
       deviceConnected = true;
-      Serial.println("Połączono z telefonem!");
+      isAuthenticated = false; // Każde nowe połączenie zaczyna bez autoryzacji
+      Serial.println("Połączono z telefonem! Oczekiwanie na autoryzację...");
     };
 
     void onDisconnect(BLEServer* pServer) {
       deviceConnected = false;
-      Serial.println("Rozłączono z telefonem!");
+      isAuthenticated = false; // Rozłączenie resetuje stan autoryzacji
+      Serial.println("Rozłączono z telefonem! Blokada aktywna.");
     }
 };
 
@@ -175,33 +184,57 @@ class MyCallbacks: public BLECharacteristicCallbacks {
 
       if (rxValue.length() > 0) {
         Serial.print("Otrzymano komendę: ");
-        for (int i = 0; i < rxValue.length(); i++) {
-          Serial.print(rxValue[i]);
+        // Z przyczyn bezpieczeństwa nie drukujemy pełnego PINu w konsoli Serial w czystej postaci
+        if (rxValue.rfind("auth_", 0) == 0) {
+          Serial.println("auth_****");
+        } else {
+          Serial.println(rxValue.c_str());
         }
-        Serial.println();
 
-        // Jeśli tryb fali w pętli jest włączony, wyłączamy go przy każdej innej komendzie
+        // 1. OBSŁUGA AUTORYZACJI
+        if (rxValue.rfind("auth_", 0) == 0) {
+          std::string pinAttempt = rxValue.substr(5);
+          if (pinAttempt == AUTH_PIN) {
+            isAuthenticated = true;
+            Serial.println("Autoryzacja udana!");
+            pTxCharacteristic->setValue("ACK: Unlocked");
+            pTxCharacteristic->notify();
+          } else {
+            isAuthenticated = false;
+            Serial.println("Autoryzacja NIEUDANA!");
+            pTxCharacteristic->setValue("ERR: Auth failed");
+            pTxCharacteristic->notify();
+          }
+          return;
+        }
+
+        // 2. BLOKADA DLA NIEAUTORYZOWANYCH ZAPYTAŃ
+        if (!isAuthenticated) {
+          Serial.println("Odmowa dostępu: Urządzenie zablokowane!");
+          pTxCharacteristic->setValue("ERR: Locked");
+          pTxCharacteristic->notify();
+          return;
+        }
+
+        // Jeśli tryb fali w pętli jest włączony, wyłączamy go przy każdej innej komendzie ruchowej
         if (rxValue != "wink_a" && currentMode == MODE_WAVE_LOOP) {
           currentMode = MODE_NORMAL;
           resetSystem();
           Serial.println("Pętla fali zatrzymana przez inne żądanie.");
         }
 
-        // Przetwarzanie komend
+        // 3. OBSŁUGA KOMEND STEROWANIA I KONFIGURACJI (DOSTĘPNE PO ODBLOKOWANIU)
         if (rxValue == "wink_l") {
-          Serial.println("Akcja: Wink Lewy");
           pTxCharacteristic->setValue("ACK: Wink L");
           pTxCharacteristic->notify();
           winkLeft();
         } 
         else if (rxValue == "wink_r") {
-          Serial.println("Akcja: Wink Prawy");
           pTxCharacteristic->setValue("ACK: Wink R");
           pTxCharacteristic->notify();
           winkRight();
         } 
         else if (rxValue == "wink_b") {
-          Serial.println("Akcja: Wink Oba");
           pTxCharacteristic->setValue("ACK: Wink Both");
           pTxCharacteristic->notify();
           winkBoth();
@@ -210,43 +243,72 @@ class MyCallbacks: public BLECharacteristicCallbacks {
           if (currentMode == MODE_WAVE_LOOP) {
             currentMode = MODE_NORMAL;
             resetSystem();
-            Serial.println("Akcja: Pętla fali WYŁĄCZONA");
             pTxCharacteristic->setValue("ACK: Wave Loop OFF");
             pTxCharacteristic->notify();
           } else {
             resetSystem();
             currentMode = MODE_WAVE_LOOP;
-            waveStep = 0; // Uruchomi obsługę w loop() od kroku 1
-            Serial.println("Akcja: Pętla fali WŁĄCZONA");
+            waveStep = 0;
             pTxCharacteristic->setValue("ACK: Wave Loop ON");
             pTxCharacteristic->notify();
           }
         } 
         else if (rxValue == "reset") {
-          Serial.println("Akcja: Reset");
           pTxCharacteristic->setValue("ACK: Reset");
           pTxCharacteristic->notify();
           resetSystem();
         } 
-        else if (rxValue.rfind("sleepy_", 0) == 0) { // Zaczyna się od "sleepy_"
+        // Konfiguracja Sleepy Eyes z suwaka na karcie głównej
+        else if (rxValue.rfind("sleepy_", 0) == 0) { 
           std::string msStr = rxValue.substr(7);
           int customDelay = atoi(msStr.c_str());
           if (customDelay >= 50 && customDelay <= 600) {
             sleepyDelayMs = customDelay;
-            Serial.printf("Akcja: Sleepy Eyes (%d ms)\n", sleepyDelayMs);
+            Serial.printf("Tymczasowa zmiana: Sleepy (%d ms)\n", sleepyDelayMs);
             char reply[30];
             snprintf(reply, sizeof(reply), "ACK: Sleepy %d ms", sleepyDelayMs);
             pTxCharacteristic->setValue(reply);
             pTxCharacteristic->notify();
             sleepyEyes(sleepyDelayMs);
           } else {
-            Serial.println("Błąd: Niepoprawny czas dla Sleepy");
             pTxCharacteristic->setValue("ERR: Invalid sleepy time");
             pTxCharacteristic->notify();
           }
         }
+        // Zapisywanie ustawień w pamięci NVS z panelu konfiguracyjnego (zębatka)
+        else if (rxValue.rfind("set_sleepy_", 0) == 0) { 
+          std::string msStr = rxValue.substr(11);
+          int val = atoi(msStr.c_str());
+          if (val >= 50 && val <= 600) {
+            sleepyDelayMs = val;
+            preferences.putInt("sleepy_delay", val);
+            Serial.printf("Zapisano NVS: Sleepy delay = %d ms\n", val);
+            char reply[35];
+            snprintf(reply, sizeof(reply), "ACK: Saved Sleepy %d ms", val);
+            pTxCharacteristic->setValue(reply);
+            pTxCharacteristic->notify();
+          } else {
+            pTxCharacteristic->setValue("ERR: Invalid sleepy range");
+            pTxCharacteristic->notify();
+          }
+        }
+        else if (rxValue.rfind("set_step_", 0) == 0) { 
+          std::string msStr = rxValue.substr(9);
+          int val = atoi(msStr.c_str());
+          if (val >= 400 && val <= 1500) {
+            stepDuration = val;
+            preferences.putInt("step_duration", val);
+            Serial.printf("Zapisano NVS: Step duration = %d ms\n", val);
+            char reply[35];
+            snprintf(reply, sizeof(reply), "ACK: Saved Step %d ms", val);
+            pTxCharacteristic->setValue(reply);
+            pTxCharacteristic->notify();
+          } else {
+            pTxCharacteristic->setValue("ERR: Invalid step range");
+            pTxCharacteristic->notify();
+          }
+        }
         else {
-          Serial.println("Błąd: Nieznana komenda");
           pTxCharacteristic->setValue("ERR: Unknown command");
           pTxCharacteristic->notify();
         }
@@ -261,6 +323,12 @@ class MyCallbacks: public BLECharacteristicCallbacks {
 void setup() {
   Serial.begin(115200);
   Serial.println("Inicjalizacja Miata Wink Mod...");
+
+  // Inicjalizacja pamięci trwałej NVS w przestrzeni "winkmod"
+  preferences.begin("winkmod", false);
+  sleepyDelayMs = preferences.getInt("sleepy_delay", 220); // Domyślnie 220 ms
+  stepDuration = preferences.getInt("step_duration", 800);  // Domyślnie 800 ms
+  Serial.printf("Załadowano z pamięci NVS - Sleepy delay: %d ms, Step duration: %d ms\n", sleepyDelayMs, stepDuration);
 
   // Konfiguracja pinów przekaźnika jako wyjścia
   pinMode(RELAY_LEFT_PIN, OUTPUT);
@@ -302,7 +370,7 @@ void setup() {
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
   pAdvertising->setScanResponse(true);
-  pAdvertising->setMinPreferred(0x06);  // Czas odpowiedzi na skanowanie
+  pAdvertising->setMinPreferred(0x06);
   pAdvertising->setMinPreferred(0x12);
   BLEDevice::startAdvertising();
   
@@ -331,11 +399,6 @@ void loop() {
   
   // ==========================================================
   // NIEBLOKUJĄCA OBSŁUGA PĘTLI FALI (TOGGLE WAVE LOOP)
-  // Wzór użytkownika:
-  // Krok 1: Lewe = 1 (otwarte), Prawe = 0 (zamknięte)
-  // Krok 2: Lewe = 1 (otwarte), Prawe = 1 (otwarte)
-  // Krok 3: Lewe = 0 (zamknięte), Prawe = 1 (otwarte)
-  // Krok 4: Lewe = 0 (zamknięte), Prawe = 0 (zamknięte)
   // ==========================================================
   if (currentMode == MODE_WAVE_LOOP) {
     unsigned long now = millis();
@@ -350,8 +413,8 @@ void loop() {
       setRelay(RELAY_TRIGGER_PIN, true); // Sygnał podnoszenia (UP)
       Serial.println("Wave Loop: Krok 1 (Lewe=1, Prawe=0)");
     } 
-    // Przełączanie kroków po upływie STEP_DURATION (800ms)
-    else if (now - lastStepTime >= STEP_DURATION) {
+    // Przełączanie kroków po upływie stepDuration (wczytanego z konfiguracji)
+    else if (now - lastStepTime >= stepDuration) {
       lastStepTime = now;
       waveStep++;
       if (waveStep > 4) {
@@ -362,38 +425,30 @@ void loop() {
       
       switch (waveStep) {
         case 1:
-          // Krok 1: Lewe=1, Prawe=0
-          // Zasilanie lewego włączone, prawego odcięte, wyzwalacz włączony (UP)
-          setRelay(RELAY_RIGHT_PIN, true);   // Odetnij prawy
-          setRelay(RELAY_LEFT_PIN, false);   // Włącz lewy
-          setRelay(RELAY_TRIGGER_PIN, true); // Wyzwalacz ON (UP)
+          setRelay(RELAY_RIGHT_PIN, true);
+          setRelay(RELAY_LEFT_PIN, false);
+          setRelay(RELAY_TRIGGER_PIN, true);
           Serial.println("Wave Loop: Krok 1 (Lewe=1, Prawe=0)");
           break;
           
         case 2:
-          // Krok 2: Lewe=1, Prawe=1
-          // Lewy odcięty (zostaje w górze), prawy włączony (idzie w górę), wyzwalacz włączony (UP)
-          setRelay(RELAY_LEFT_PIN, true);     // Odetnij lewy (zostaje 1)
-          setRelay(RELAY_RIGHT_PIN, false);   // Włącz prawy (idzie do 1)
-          setRelay(RELAY_TRIGGER_PIN, true);  // Wyzwalacz ON (UP)
+          setRelay(RELAY_LEFT_PIN, true);
+          setRelay(RELAY_RIGHT_PIN, false);
+          setRelay(RELAY_TRIGGER_PIN, true);
           Serial.println("Wave Loop: Krok 2 (Lewe=1, Prawe=1)");
           break;
           
         case 3:
-          // Krok 3: Lewe=0, Prawe=1
-          // Lewy włączony (idzie w dół), prawy odcięty (zostaje w górze), wyzwalacz wyłączony (DOWN)
-          setRelay(RELAY_RIGHT_PIN, true);    // Odetnij prawy (zostaje 1)
-          setRelay(RELAY_LEFT_PIN, false);    // Włącz lewy (idzie do 0)
-          setRelay(RELAY_TRIGGER_PIN, false); // Wyzwalacz OFF (DOWN)
+          setRelay(RELAY_RIGHT_PIN, true);
+          setRelay(RELAY_LEFT_PIN, false);
+          setRelay(RELAY_TRIGGER_PIN, false);
           Serial.println("Wave Loop: Krok 3 (Lewe=0, Prawe=1)");
           break;
           
         case 4:
-          // Krok 4: Lewe=0, Prawe=0
-          // Lewy odcięty (zostaje w dole), prawy włączony (idzie w dół), wyzwalacz wyłączony (DOWN)
-          setRelay(RELAY_LEFT_PIN, true);     // Odetnij lewy (zostaje 0)
-          setRelay(RELAY_RIGHT_PIN, false);   // Włącz prawy (idzie do 0)
-          setRelay(RELAY_TRIGGER_PIN, false); // Wyzwalacz OFF (DOWN)
+          setRelay(RELAY_LEFT_PIN, true);
+          setRelay(RELAY_RIGHT_PIN, false);
+          setRelay(RELAY_TRIGGER_PIN, false);
           Serial.println("Wave Loop: Krok 4 (Lewe=0, Prawe=0)");
           break;
       }
