@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Miata Wink Mod Controller</title>
+  <!-- Import Inter font from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      /* User Custom Color Palette */
+      --midnight-violet: #1f0318ff;
+      --frosted-mint: #e5f2c9ff;
+      --clay-soil: #7f534bff;
+      --faded-copper: #8c705fff;
+      --shadow-grey: #1e1a1dff;
+      
+      /* Helper colors */
+      --text-main: #ffffff;
+      --text-muted: #a097a5;
+      --success: #4caf50;
+      --error: #f44336;
+      --glow-glow: 0 0 15px var(--frosted-mint);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: radial-gradient(circle at center, var(--shadow-grey) 0%, var(--midnight-violet) 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 450px;
+      background: rgba(30, 26, 29, 0.6);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(229, 242, 201, 0.15);
+      border-radius: 24px;
+      padding: 30px 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 1.8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+      color: var(--frosted-mint);
+      text-shadow: var(--glow-glow);
+    }
+
+    header p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    /* Connection status card */
+    .status-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .status-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      background-color: var(--error);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--error);
+      transition: all 0.3s ease;
+    }
+
+    .status-dot.connected {
+      background-color: var(--success);
+      box-shadow: 0 0 10px var(--success);
+    }
+
+    .status-text {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text-main);
+    }
+
+    /* Buttons */
+    .btn {
+      cursor: pointer;
+      border: none;
+      outline: none;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-connect {
+      background-color: var(--frosted-mint);
+      color: var(--midnight-violet);
+      padding: 14px 28px;
+      border-radius: 14px;
+      width: 100%;
+      font-size: 1rem;
+      box-shadow: var(--glow-glow);
+      margin-bottom: 20px;
+    }
+
+    .btn-connect:active {
+      transform: scale(0.97);
+      opacity: 0.9;
+    }
+
+    .btn-connect.connected {
+      background-color: transparent;
+      color: var(--frosted-mint);
+      border: 2px solid var(--frosted-mint);
+      box-shadow: none;
+    }
+
+    /* Headlight control grid */
+    .control-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .btn-action {
+      background: rgba(127, 83, 75, 0.15); /* clay-soil with transparency */
+      border: 1px solid rgba(127, 83, 75, 0.3);
+      color: var(--text-main);
+      padding: 24px 10px;
+      border-radius: 16px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-action:hover, .btn-action:focus {
+      background: rgba(127, 83, 75, 0.3);
+      border-color: var(--clay-soil);
+    }
+
+    .btn-action:active {
+      transform: scale(0.95);
+    }
+
+    /* Active state for toggle buttons (Wave) */
+    .btn-action.active {
+      background: var(--frosted-mint) !important;
+      color: var(--midnight-violet) !important;
+      border-color: var(--frosted-mint) !important;
+      box-shadow: var(--glow-glow) !important;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); box-shadow: 0 0 10px var(--frosted-mint); }
+      50% { transform: scale(1.03); box-shadow: 0 0 20px var(--frosted-mint); }
+      100% { transform: scale(1); box-shadow: 0 0 10px var(--frosted-mint); }
+    }
+
+    .btn-action:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+      animation: none;
+    }
+
+    /* Sleepy Eyes slider section */
+    .slider-section {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 24px;
+      text-align: left;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .slider-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--frosted-mint);
+    }
+
+    .slider-value {
+      font-weight: 800;
+      font-size: 1rem;
+      background: var(--faded-copper);
+      color: var(--midnight-violet);
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    .slider-wrapper {
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--frosted-mint);
+      cursor: pointer;
+      box-shadow: 0 0 8px var(--frosted-mint);
+      transition: transform 0.1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:active {
+      transform: scale(1.2);
+    }
+
+    .btn-sleepy {
+      background: var(--faded-copper);
+      color: var(--midnight-violet);
+      padding: 12px;
+      border-radius: 12px;
+      width: 100%;
+      font-size: 0.9rem;
+    }
+
+    .btn-sleepy:active {
+      transform: scale(0.97);
+    }
+
+    .btn-sleepy:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Reset button */
+    .btn-reset {
+      background: var(--clay-soil);
+      color: var(--text-main);
+      padding: 16px;
+      border-radius: 16px;
+      width: 100%;
+      font-size: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 24px;
+      box-shadow: 0 4px 15px rgba(127, 83, 75, 0.4);
+    }
+
+    .btn-reset:active {
+      transform: scale(0.97);
+    }
+
+    .btn-reset:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* Diagnostic console */
+    .console {
+      background: var(--shadow-grey);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      text-align: left;
+      max-height: 100px;
+      overflow-y: auto;
+      color: var(--text-muted);
+    }
+
+    .console-line {
+      margin-bottom: 4px;
+      border-left: 2px solid var(--faded-copper);
+      padding-left: 6px;
+    }
+
+    .console-line.success {
+      border-left-color: var(--success);
+      color: #c8e6c9;
+    }
+
+    .console-line.info {
+      border-left-color: var(--frosted-mint);
+      color: #e5f2c9;
+    }
+
+    .console-line.error {
+      border-left-color: var(--error);
+      color: #ffcdd2;
+    }
+
+    footer {
+      margin-top: 20px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Miata Wink Mod</h1>
+      <p>Bluetooth Control Panel</p>
+    </header>
+
+    <div class="status-card">
+      <div class="status-info">
+        <div id="statusDot" class="status-dot"></div>
+        <span id="statusText" class="status-text">Disconnected</span>
+      </div>
+      <button id="connectBtn" class="btn btn-connect">Connect</button>
+    </div>
+
+    <!-- Popup lights control panel -->
+    <div class="control-grid">
+      <button id="winkLBtn" class="btn btn-action" disabled>
+        <span>Wink Left</span>
+      </button>
+      <button id="winkRBtn" class="btn btn-action" disabled>
+        <span>Wink Right</span>
+      </button>
+      <button id="winkBBtn" class="btn btn-action" disabled>
+        <span>Wink Both</span>
+      </button>
+      <button id="winkABtn" class="btn btn-action" disabled>
+        <span>Wave Loop</span>
+      </button>
+    </div>
+
+    <!-- Sleepy Eyes slider -->
+    <div class="slider-section">
+      <div class="slider-header">
+        <span class="slider-title">Sleepy Eyes Height</span>
+        <span id="sliderValue" class="slider-value">220ms</span>
+      </div>
+      <div class="slider-wrapper">
+        <input type="range" id="sleepySlider" min="100" max="400" value="220" disabled>
+      </div>
+      <button id="sleepyBtn" class="btn btn-sleepy" disabled>Set Sleepy Eyes</button>
+    </div>
+
+    <button id="resetBtn" class="btn btn-reset" disabled>Close Headlights / Reset</button>
+
+    <!-- Logs Console -->
+    <div id="console" class="console">
+      <div class="console-line info">Control panel started. Click "Connect" to scan for BLE module.</div>
+    </div>
+  </div>
+
+  <footer>Miata NA Web Bluetooth Controller</footer>
+
+  <script>
+    // UUID configuration for Nordic UART Service (NUS)
+    const NUS_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+    const NUS_RX_UUID      = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // Write to ESP32
+    const NUS_TX_UUID      = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // Read from ESP32 (Notifications)
+
+    let bleDevice = null;
+    let rxCharacteristic = null;
+    let txCharacteristic = null;
+
+    // DOM Elements
+    const connectBtn = document.getElementById('connectBtn');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const consoleDiv = document.getElementById('console');
+    
+    const winkLBtn = document.getElementById('winkLBtn');
+    const winkRBtn = document.getElementById('winkRBtn');
+    const winkBBtn = document.getElementById('winkBBtn');
+    const winkABtn = document.getElementById('winkABtn');
+    
+    const sleepySlider = document.getElementById('sleepySlider');
+    const sliderValue = document.getElementById('sliderValue');
+    const sleepyBtn = document.getElementById('sleepyBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    // Slider listener
+    sleepySlider.addEventListener('input', (e) => {
+      sliderValue.textContent = e.target.value + 'ms';
+    });
+
+    // Logging helper
+    function log(message, type = '') {
+      const line = document.createElement('div');
+      line.className = `console-line ${type}`;
+      
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      line.textContent = `[${time}] ${message}`;
+      
+      consoleDiv.appendChild(line);
+      consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    }
+
+    // Clear active/toggle states in UI
+    function clearActiveStates() {
+      winkABtn.classList.remove('active');
+    }
+
+    // Set buttons active/inactive state
+    function setInterfaceEnabled(enabled) {
+      const buttons = [winkLBtn, winkRBtn, winkBBtn, winkABtn, sleepyBtn, resetBtn, sleepySlider];
+      buttons.forEach(btn => {
+        btn.disabled = !enabled;
+        if (!enabled) {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    // Connect to BLE GATT server
+    async function onConnectButtonClick() {
+      if (bleDevice && bleDevice.gatt.connected) {
+        log('Disconnecting device...', 'info');
+        bleDevice.gatt.disconnect();
+        return;
+      }
+
+      try {
+        log('Scanning for BLE module...', 'info');
+        bleDevice = await navigator.bluetooth.requestDevice({
+          filters: [{ services: [NUS_SERVICE_UUID] }],
+          optionalServices: [NUS_SERVICE_UUID]
+        });
+
+        log(`Found device: ${bleDevice.name}. Connecting...`, 'info');
+        bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+        const server = await bleDevice.gatt.connect();
+        
+        log('Getting NUS service...', 'info');
+        const service = await server.getPrimaryService(NUS_SERVICE_UUID);
+
+        log('Getting characteristics...', 'info');
+        rxCharacteristic = await service.getCharacteristic(NUS_RX_UUID);
+        txCharacteristic = await service.getCharacteristic(NUS_TX_UUID);
+
+        // Subscribe to notifications (TX)
+        log('Starting notifications...', 'info');
+        await txCharacteristic.startNotifications();
+        txCharacteristic.addEventListener('characteristicvaluechanged', onTxNotificationReceived);
+
+        // Success
+        statusDot.classList.add('connected');
+        statusText.textContent = 'Connected';
+        connectBtn.textContent = 'Disconnect';
+        connectBtn.classList.add('connected');
+        setInterfaceEnabled(true);
+        log('Successfully connected to Miata Wink Mod BLE!', 'success');
+
+      } catch (error) {
+        log(`Connection error: ${error.message}`, 'error');
+        onDisconnected();
+      }
+    }
+
+    // Disconnect handler
+    function onDisconnected() {
+      statusDot.classList.remove('connected');
+      statusText.textContent = 'Disconnected';
+      connectBtn.textContent = 'Connect';
+      connectBtn.classList.remove('connected');
+      setInterfaceEnabled(false);
+      rxCharacteristic = null;
+      txCharacteristic = null;
+      log('Device disconnected.', 'error');
+    }
+
+    // Notification receiver (ACKs)
+    function onTxNotificationReceived(event) {
+      const value = event.target.value;
+      const decoder = new TextDecoder('utf-8');
+      const text = decoder.decode(value);
+      log(`Received: ${text}`, 'success');
+
+      if (text === "ACK: Wave Loop ON") {
+        winkABtn.classList.add('active');
+        log("Wave loop started in background.", "info");
+      } else if (text === "ACK: Wave Loop OFF") {
+        winkABtn.classList.remove('active');
+        log("Wave loop stopped.", "info");
+      } else if (text.startsWith("ACK:") && text !== "ACK: Wave Loop ON") {
+        // Any other valid command clears toggle states
+        clearActiveStates();
+      }
+    }
+
+    // Send command helper
+    async function sendCommand(command) {
+      if (!rxCharacteristic) {
+        log('Error: device not connected!', 'error');
+        return;
+      }
+
+      // If sending a non-wave command, immediately clear visual active state in UI
+      if (command !== 'wink_a') {
+        clearActiveStates();
+      }
+
+      try {
+        log(`Sending: ${command}...`);
+        const encoder = new TextEncoder();
+        const data = encoder.encode(command);
+        await rxCharacteristic.writeValue(data);
+      } catch (error) {
+        log(`Error sending command: ${error.message}`, 'error');
+      }
+    }
+
+    // Button event listeners
+    connectBtn.addEventListener('click', onConnectButtonClick);
+    
+    winkLBtn.addEventListener('click', () => sendCommand('wink_l'));
+    winkRBtn.addEventListener('click', () => sendCommand('wink_r'));
+    winkBBtn.addEventListener('click', () => sendCommand('wink_b'));
+    winkABtn.addEventListener('click', () => sendCommand('wink_a'));
+    
+    sleepyBtn.addEventListener('click', () => {
+      const ms = sleepySlider.value;
+      sendCommand(`sleepy_${ms}`);
+    });
+    
+    resetBtn.addEventListener('click', () => sendCommand('reset'));
+
+  </script>
+</body>
+</html>
