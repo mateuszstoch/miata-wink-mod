@@ -581,17 +581,7 @@
       </button>
     </div>
 
-    <!-- Sleepy Eyes slider (Temporary/Testing) -->
-    <div class="slider-section">
-      <div class="slider-header">
-        <span class="slider-title">Testing Sleepy Eyes</span>
-        <span id="sliderValue" class="slider-value">220ms</span>
-      </div>
-      <div class="slider-wrapper">
-        <input type="range" id="sleepySlider" min="100" max="400" value="220" disabled>
-      </div>
-      <button id="sleepyBtn" class="btn btn-sleepy" disabled>Trigger Sleepy Eyes</button>
-    </div>
+
 
     <button id="resetBtn" class="btn btn-reset" disabled>Close Headlights / Reset</button>
 
@@ -666,9 +656,7 @@
     const winkBBtn = document.getElementById('winkBBtn');
     const winkABtn = document.getElementById('winkABtn');
     
-    const sleepySlider = document.getElementById('sleepySlider');
-    const sliderValue = document.getElementById('sliderValue');
-    const sleepyBtn = document.getElementById('sleepyBtn');
+
     const resetBtn = document.getElementById('resetBtn');
 
     // Settings Modal DOM Elements
@@ -695,10 +683,7 @@
       }
     });
 
-    // Slider listener
-    sleepySlider.addEventListener('input', (e) => {
-      sliderValue.textContent = e.target.value + 'ms';
-    });
+
 
     // Modal open/close actions
     settingsBtn.addEventListener('click', () => {
@@ -741,7 +726,7 @@
 
     // Set buttons active/inactive state (differentiating between connected, and authenticated)
     function setInterfaceEnabled(enabled) {
-      const mainControlButtons = [winkLBtn, winkRBtn, winkBBtn, winkABtn, sleepyBtn, resetBtn, sleepySlider];
+      const mainControlButtons = [winkLBtn, winkRBtn, winkBBtn, winkABtn, resetBtn];
       mainControlButtons.forEach(btn => {
         btn.disabled = !enabled;
         if (!enabled) {
@@ -915,10 +900,7 @@
     winkBBtn.addEventListener('click', () => sendCommand('wink_b'));
     winkABtn.addEventListener('click', () => sendCommand('wink_a'));
     
-    sleepyBtn.addEventListener('click', () => {
-      const ms = sleepySlider.value;
-      sendCommand(`sleepy_${ms}`);
-    });
+
     
     resetBtn.addEventListener('click', () => sendCommand('reset'));
 
